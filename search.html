@@ -76,7 +76,7 @@
 <script>
     let alonData = [];
 
-    // הקישורים הישירים למאגר alonim שלך
+    // הקישורים הישירים למאגר alonim
     const PRIMARY_URL = 'https://raw.githubusercontent.com/ladat1234/alonim/main/search_index.json';
     const BACKUP_URL = 'https://ladat1234.github.io/alonim/search_index.json';
     
@@ -105,6 +105,21 @@
                 .then(enableSearch)
                 .catch(showError);
         });
+
+    // מפת הניווט של האתר לפי מספר העלון
+    function getAlonDataInfo(alonNumber) {
+        const num = parseInt(alonNumber);
+        if (isNaN(num)) return null;
+        if (num >= 1 && num <= 26) return { year: 'תשע"ט', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A2%D7%98.htm' };
+        if (num >= 27 && num <= 69) return { year: 'תש"פ', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4.htm' };
+        if (num >= 70 && num <= 115) return { year: 'תשפ"א', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%90.htm' };
+        if (num >= 116 && num <= 168) return { year: 'תשפ"ב', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%91.htm' };
+        if (num >= 169 && num <= 217) return { year: 'תשפ"ג', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%92.htm' };
+        if (num >= 218 && num <= 269) return { year: 'תשפ"ד', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%93.htm' };
+        if (num >= 270 && num <= 318) return { year: 'תשפ"ה', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%94.htm' };
+        if (num >= 319) return { year: 'תשפ"ו', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%95.htm' };
+        return null;
+    }
 
     function buildSmartRegex(query) {
         const words = query.trim().split(/\s+/);
@@ -136,11 +151,19 @@
                 const numberMatch = file.filename.match(/\d+/);
                 const alonNumber = numberMatch ? numberMatch[0] : '';
                 
-                // מכיוון שאנחנו יושבים ב-iFrame נפרד, נפתח את העלון ישירות דרך גוגל דרייב
-                const fallbackSearch = encodeURIComponent(`עלון מספר ${alonNumber}`);
-                const viewLink = `https://drive.google.com/drive/search?q=${fallbackSearch}`;
-
-                let buttonsHtml = `<a href="${viewLink}" target="_blank" class="btn-drive-view">👁️ חפש עלון ${alonNumber} בדרייב</a>`;
+                let buttonsHtml = '';
+                if (alonNumber) {
+                    const info = getAlonDataInfo(alonNumber);
+                    if (info) {
+                        // יצירת הכפתור המפנה ישירות לעמוד השנה המתאימה באתר שלך
+                        buttonsHtml = `<a href="${info.url}" target="_parent" class="btn-drive-view">👁️ מעבר לעמוד שנת ${info.year} (עלון ${alonNumber})</a>`;
+                    } else {
+                        // גיבוי לדרייב רק במידה והמספר לא נמצא במפת הניווט (נדיר)
+                        const fallbackSearch = encodeURIComponent(`עלון מספר ${alonNumber}`);
+                        const viewLink = `https://drive.google.com/drive/search?q=${fallbackSearch}`;
+                        buttonsHtml = `<a href="${viewLink}" target="_blank" class="btn-drive-view">👁️ חפש עלון ${alonNumber} בדרייב</a>`;
+                    }
+                }
 
                 const start = Math.max(0, match.index - 70);
                 const end = Math.min(content.length, match.index + match[0].length + 70);
