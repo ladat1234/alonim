@@ -160,15 +160,18 @@
         return null;
     }
 
+    // התיקון: פונקציה שמנטרלת תווי קוד מהחיפוש של הגולש
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     function buildSmartRegex(query) {
         const words = query.trim().split(/\s+/);
         const flexibleWords = words.map(word => {
-            // בורחים מסימנים מיוחדים כדי שהקוד לא יקרוס
-            let safeWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            safeWord = safeWord.replace(/[וי]/g, '[וי]?');
-            // הפתרון לסימני השאלה והפיסוק: מאפשר למצוא אותם גם אם יש רווח לפניהם בטקסט
-            safeWord = safeWord.replace(/\\([.?!\-:,()])/g, '\\s*\\$1');
-            return safeWord;
+            // קודם כל נהפוך סימני שאלה, נקודות וכו' לטקסט בטוח
+            const safeWord = escapeRegExp(word);
+            // ואז נוסיף את הגמישות לאותיות ו' י'
+            return safeWord.replace(/[וי]/g, '[וי]?');
         });
         const gapPattern = '(?:\\s+[^\\s]+){0,5}\\s+';
         return new RegExp(flexibleWords.join(gapPattern), 'g');
@@ -189,11 +192,10 @@
     }
 
     document.getElementById('smartSearchInput').addEventListener('input', function(e) {
-        // התיקון הקריטי: לא מוחקים את סימני הפיסוק! לוקחים את הטקסט כמו שהוא
-        const term = e.target.value.trim(); 
+        const term = e.target.value.trim();
         const resultsDiv = document.getElementById('searchResults');
         
-        if(term.length < 2) { 
+        if(term.length < 2) { // הורדתי ל-2 תווים כדי שאפשר יהיה לחפש גם מספרים דו-ספרתיים!
             resultsDiv.innerHTML = '';
             return;
         }
