@@ -160,15 +160,15 @@
         return null;
     }
 
-    function escapeRegExp(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
     function buildSmartRegex(query) {
         const words = query.trim().split(/\s+/);
         const flexibleWords = words.map(word => {
-            const safeWord = escapeRegExp(word);
-            return safeWord.replace(/[וי]/g, '[וי]?');
+            // בורחים מסימנים מיוחדים כדי שהקוד לא יקרוס
+            let safeWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            safeWord = safeWord.replace(/[וי]/g, '[וי]?');
+            // הפתרון לסימני השאלה והפיסוק: מאפשר למצוא אותם גם אם יש רווח לפניהם בטקסט
+            safeWord = safeWord.replace(/\\([.?!\-:,()])/g, '\\s*\\$1');
+            return safeWord;
         });
         const gapPattern = '(?:\\s+[^\\s]+){0,5}\\s+';
         return new RegExp(flexibleWords.join(gapPattern), 'g');
@@ -189,10 +189,8 @@
     }
 
     document.getElementById('smartSearchInput').addEventListener('input', function(e) {
-        const rawTerm = e.target.value;
-        
-        // התיקון שלנו: ניקוי שקט של סימני פיסוק (סימני שאלה, פסיקים וכו') כדי להבטיח מציאת תוצאות
-        const term = rawTerm.replace(/[?.,!;:()\-]/g, '').trim();
+        // התיקון הקריטי: לא מוחקים את סימני הפיסוק! לוקחים את הטקסט כמו שהוא
+        const term = e.target.value.trim(); 
         const resultsDiv = document.getElementById('searchResults');
         
         if(term.length < 2) { 
