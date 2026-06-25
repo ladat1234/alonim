@@ -160,7 +160,6 @@
         return null;
     }
 
-    // התיקון: פונקציה שמנטרלת תווי קוד מהחיפוש של הגולש
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
@@ -168,9 +167,7 @@
     function buildSmartRegex(query) {
         const words = query.trim().split(/\s+/);
         const flexibleWords = words.map(word => {
-            // קודם כל נהפוך סימני שאלה, נקודות וכו' לטקסט בטוח
             const safeWord = escapeRegExp(word);
-            // ואז נוסיף את הגמישות לאותיות ו' י'
             return safeWord.replace(/[וי]/g, '[וי]?');
         });
         const gapPattern = '(?:\\s+[^\\s]+){0,5}\\s+';
@@ -192,10 +189,13 @@
     }
 
     document.getElementById('smartSearchInput').addEventListener('input', function(e) {
-        const term = e.target.value.trim();
+        const rawTerm = e.target.value;
+        
+        // התיקון שלנו: ניקוי שקט של סימני פיסוק (סימני שאלה, פסיקים וכו') כדי להבטיח מציאת תוצאות
+        const term = rawTerm.replace(/[?.,!;:()\-]/g, '').trim();
         const resultsDiv = document.getElementById('searchResults');
         
-        if(term.length < 2) { // הורדתי ל-2 תווים כדי שאפשר יהיה לחפש גם מספרים דו-ספרתיים!
+        if(term.length < 2) { 
             resultsDiv.innerHTML = '';
             return;
         }
