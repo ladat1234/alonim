@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חיפוש עלונים</title>
+    <style>
+        /* עיצוב מערכת החיפוש */
+        body { margin: 0; padding: 0; background: transparent; font-family: Arial, Helvetica, sans-serif; }
+        .search-wrapper {
+            width: 100%;
+            margin: 0 auto;
+            direction: rtl;
+            box-sizing: border-box;
+        }
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #3182ce;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+        }
+        .result-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-right: 5px solid #3182ce;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .result-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2d3748;
+            margin: 0;
+        }
+        .highlight {
+            background-color: #fefcbf;
+            font-weight: bold;
+            padding: 0 4px;
+            border-radius: 3px;
+            color: #b7791f;
+        }
+        .action-buttons a {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-right: 5px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .btn-drive-view { background: #ebf8ff; color: #3182ce; border: 1px solid #bee3f8; }
+        .btn-drive-view:hover { background: #bee3f8; }
+    </style>
+</head>
+<body>
+
+<div class="search-wrapper">
+    <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מושג בתוך העלונים (לדוגמה: ימי בין המצרים)..." disabled>
+    <div id="statusMessage" style="color: #718096; margin-top: 10px; font-size: 14px;">מטעין את מאגר החיפוש...</div>
+    <div id="searchResults"></div>
+</div>
+
+<script>
+    let alonData = [];
+
+    // הקישורים הישירים למאגר alonim שלך
+    const PRIMARY_URL = 'https://raw.githubusercontent.com/ladat1234/alonim/main/search_index.json';
+    const BACKUP_URL = 'https://ladat1234.github.io/alonim/search_index.json';
+    
+    function enableSearch(data) {
+        alonData = data;
+        document.getElementById('smartSearchInput').disabled = false;
+        document.getElementById('statusMessage').style.display = 'none';
+    }
+
+    function showError() {
+        document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון את מאגר החיפוש. אנא ודא שקובץ ה-JSON נמצא במאגר.';
+    }
+
+    fetch(PRIMARY_URL)
+        .then(response => {
+            if (!response.ok) throw new Error('Primary failed');
+            return response.json();
+        })
+        .then(enableSearch)
+        .catch(() => {
+            fetch(BACKUP_URL)
+                .then(response => {
+                    if (!response.ok) throw new Error('Backup failed');
+                    return response.json();
+                })
+                .then(enableSearch)
+                .catch(showError);
+        });
+
+    function buildSmartRegex(query) {
+        const words = query.trim().split(/\s+/);
+        const flexibleWords = words.map(word => word.replace(/[וי]/g, '[וי]?'));
+        const gapPattern = '(?:\\s+[^\\s]+){0,5}\\s+';
+        return new RegExp(flexibleWords.join(gapPattern), 'g');
+    }
+
+    document.getElementById('smartSearchInput').addEventListener('input', function(e) {
+        const term = e.target.value.trim();
+        const resultsDiv = document.getElementById('searchResults');
+        
+        if(term.length < 3) {
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        const smartRegex = buildSmartRegex(term);
+        let htmlOutput = '';
+        let matchCount = 0;
+
+        alonData.forEach(file => {
+            const content = file.content;
+            const match = smartRegex.exec(content);
+            
+            if (match) {
+                matchCount++;
+                
+                const numberMatch = file.filename.match(/\d+/);
+                const alonNumber = numberMatch ? numberMatch[0] : '';
+                
+                // מכיוון שאנחנו יושבים ב-iFrame נפרד, נפתח את העלון ישירות דרך גוגל דרייב
+                const fallbackSearch = encodeURIComponent(`עלון מספר ${alonNumber}`);
+                const viewLink = `https://drive.google.com/drive/search?q=${fallbackSearch}`;
+
+                let buttonsHtml = `<a href="${viewLink}" target="_blank" class="btn-drive-view">👁️ חפש עלון ${alonNumber} בדרייב</a>`;
+
+                const start = Math.max(0, match.index - 70);
+                const end = Math.min(content.length, match.index + match[0].length + 70);
+                let snippet = content.substring(start, end);
+                snippet = snippet.replace(buildSmartRegex(term), matched => `<span class="highlight">${matched}</span>`);
+
+                htmlOutput += `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-title">📄 נמצא בעלון ${alonNumber}</span>
+                            <div class="action-buttons">${buttonsHtml}</div>
+                        </div>
+                        <p style="margin:0; color:#4a5568; font-size:15px; line-height:1.5;">...${snippet}...</p>
+                    </div>
+                `;
+            }
+            smartRegex.lastIndex = 0; 
+        });
+
+        if (matchCount === 0) {
+            resultsDiv.innerHTML = '<div style="margin-top:15px; color:#718096;">לא נמצאו תוצאות לחיפוש זה.</div>';
+        } else {
+            resultsDiv.innerHTML = `<div style="margin-top:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
+        }
+    });
+</script>
+</body>
+</html>
