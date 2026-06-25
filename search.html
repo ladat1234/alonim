@@ -63,7 +63,6 @@
         .btn-drive-view { background: #ebf8ff; color: #3182ce; border: 1px solid #bee3f8; }
         .btn-drive-view:hover { background: #bee3f8; }
         
-        /* עיצוב אזור הטקסט המתקפל */
         .snippet-container {
             margin-top: 10px;
             position: relative;
@@ -77,10 +76,9 @@
             transition: max-height 0.3s ease-out;
         }
         .snippet-text.collapsed {
-            max-height: 48px; /* מציג בערך 2 שורות ראשונות */
+            max-height: 48px; 
             position: relative;
         }
-        /* אפקט הטשטוש לחלק התחתון כשהטקסט סגור */
         .snippet-text.collapsed::after {
             content: "";
             position: absolute;
@@ -111,7 +109,7 @@
 <body>
 
 <div class="search-wrapper">
-    <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מושג בתוך העלונים (לדוגמה: ימי בין המצרים)..." disabled>
+    <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מושג, מספר או משפט בתוך העלונים..." disabled>
     <div id="statusMessage" style="color: #718096; margin-top: 10px; font-size: 14px;">מטעין את מאגר החיפוש...</div>
     <div id="searchResults"></div>
 </div>
@@ -162,24 +160,33 @@
         return null;
     }
 
+    // התיקון: פונקציה שמנטרלת תווי קוד מהחיפוש של הגולש
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
     function buildSmartRegex(query) {
         const words = query.trim().split(/\s+/);
-        const flexibleWords = words.map(word => word.replace(/[וי]/g, '[וי]?'));
+        const flexibleWords = words.map(word => {
+            // קודם כל נהפוך סימני שאלה, נקודות וכו' לטקסט בטוח
+            const safeWord = escapeRegExp(word);
+            // ואז נוסיף את הגמישות לאותיות ו' י'
+            return safeWord.replace(/[וי]/g, '[וי]?');
+        });
         const gapPattern = '(?:\\s+[^\\s]+){0,5}\\s+';
         return new RegExp(flexibleWords.join(gapPattern), 'g');
     }
 
-    // פונקציית פתיחה וסגירה של הטקסט
     window.toggleSnippet = function(id) {
         const p = document.getElementById('snippet-' + id);
         const btn = document.getElementById('btn-' + id);
         if (p.classList.contains('collapsed')) {
             p.classList.remove('collapsed');
-            p.style.maxHeight = '1000px'; // פותח את הטקסט במלואו
+            p.style.maxHeight = '1000px';
             btn.innerHTML = 'הצג פחות 🔼';
         } else {
             p.classList.add('collapsed');
-            p.style.maxHeight = '48px'; // מחזיר למצב סגור
+            p.style.maxHeight = '48px';
             btn.innerHTML = 'קרא עוד 🔽';
         }
     }
@@ -188,63 +195,66 @@
         const term = e.target.value.trim();
         const resultsDiv = document.getElementById('searchResults');
         
-        if(term.length < 3) {
+        if(term.length < 2) { // הורדתי ל-2 תווים כדי שאפשר יהיה לחפש גם מספרים דו-ספרתיים!
             resultsDiv.innerHTML = '';
             return;
         }
 
-        const smartRegex = buildSmartRegex(term);
-        let htmlOutput = '';
-        let matchCount = 0;
+        try {
+            const smartRegex = buildSmartRegex(term);
+            let htmlOutput = '';
+            let matchCount = 0;
 
-        alonData.forEach(file => {
-            const content = file.content;
-            const match = smartRegex.exec(content);
-            
-            if (match) {
-                matchCount++;
+            alonData.forEach(file => {
+                const content = file.content;
+                const match = smartRegex.exec(content);
                 
-                const numberMatch = file.filename.match(/\d+/);
-                const alonNumber = numberMatch ? numberMatch[0] : '';
-                
-                let buttonsHtml = '';
-                if (alonNumber) {
-                    const info = getAlonDataInfo(alonNumber);
-                    if (info) {
-                        buttonsHtml = `<a href="${info.url}" target="_parent" class="btn-drive-view">👁️ מעבר לעמוד שנת ${info.year} (עלון ${alonNumber})</a>`;
-                    } else {
-                        const fallbackSearch = encodeURIComponent(`עלון מספר ${alonNumber}`);
-                        const viewLink = `https://drive.google.com/drive/search?q=${fallbackSearch}`;
-                        buttonsHtml = `<a href="${viewLink}" target="_blank" class="btn-drive-view">👁️ חפש עלון ${alonNumber} בדרייב</a>`;
+                if (match) {
+                    matchCount++;
+                    
+                    const numberMatch = file.filename.match(/\d+/);
+                    const alonNumber = numberMatch ? numberMatch[0] : '';
+                    
+                    let buttonsHtml = '';
+                    if (alonNumber) {
+                        const info = getAlonDataInfo(alonNumber);
+                        if (info) {
+                            buttonsHtml = `<a href="${info.url}" target="_parent" class="btn-drive-view">👁️ מעבר לעמוד שנת ${info.year} (עלון ${alonNumber})</a>`;
+                        } else {
+                            const fallbackSearch = encodeURIComponent(`עלון מספר ${alonNumber}`);
+                            const viewLink = `https://drive.google.com/drive/search?q=${fallbackSearch}`;
+                            buttonsHtml = `<a href="${viewLink}" target="_blank" class="btn-drive-view">👁️ חפש עלון ${alonNumber} בדרייב</a>`;
+                        }
                     }
+
+                    const start = Math.max(0, match.index - 250);
+                    const end = Math.min(content.length, match.index + match[0].length + 250);
+                    let snippet = content.substring(start, end);
+                    snippet = snippet.replace(buildSmartRegex(term), matched => `<span class="highlight">${matched}</span>`);
+
+                    htmlOutput += `
+                        <div class="result-card">
+                            <div class="result-header">
+                                <span class="result-title">📄 נמצא בעלון ${alonNumber}</span>
+                                <div class="action-buttons">${buttonsHtml}</div>
+                            </div>
+                            <div class="snippet-container">
+                                <p class="snippet-text collapsed" id="snippet-${matchCount}">...${snippet}...</p>
+                                <button class="toggle-btn" id="btn-${matchCount}" onclick="toggleSnippet(${matchCount})">קרא עוד 🔽</button>
+                            </div>
+                        </div>
+                    `;
                 }
+                smartRegex.lastIndex = 0; 
+            });
 
-                // הגדלת טווח התווים ל-250 מכל צד (כ-500 תווים סך הכל)
-                const start = Math.max(0, match.index - 250);
-                const end = Math.min(content.length, match.index + match[0].length + 250);
-                let snippet = content.substring(start, end);
-                snippet = snippet.replace(buildSmartRegex(term), matched => `<span class="highlight">${matched}</span>`);
-
-                htmlOutput += `
-                    <div class="result-card">
-                        <div class="result-header">
-                            <span class="result-title">📄 נמצא בעלון ${alonNumber}</span>
-                            <div class="action-buttons">${buttonsHtml}</div>
-                        </div>
-                        <div class="snippet-container">
-                            <p class="snippet-text collapsed" id="snippet-${matchCount}">...${snippet}...</p>
-                            <button class="toggle-btn" id="btn-${matchCount}" onclick="toggleSnippet(${matchCount})">קרא עוד 🔽</button>
-                        </div>
-                    </div>
-                `;
+            if (matchCount === 0) {
+                resultsDiv.innerHTML = '<div style="margin-top:15px; color:#718096;">לא נמצאו תוצאות לחיפוש זה.</div>';
+            } else {
+                resultsDiv.innerHTML = `<div style="margin-top:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
             }
-            smartRegex.lastIndex = 0; 
-        });
-
-        if (matchCount === 0) {
-            resultsDiv.innerHTML = '<div style="margin-top:15px; color:#718096;">לא נמצאו תוצאות לחיפוש זה.</div>';
-        } else {
-            resultsDiv.innerHTML = `<div style="margin-top:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
+        } catch (error) {
+            console.error("שגיאה בחיפוש:", error);
         }
     });
 </script>
