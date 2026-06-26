@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>חיפוש עלונים - מסך מפוצל</title>
+    <title>חיפוש עלונים - מסך מפוצל מתקדם</title>
     <style>
         body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; height: 100vh; overflow: hidden; background: #edf2f7; }
         
@@ -33,7 +33,7 @@
         
         iframe { width: 100%; height: 100%; border: none; }
         
-        .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; }
+        .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; font-weight: bold; text-align: center; padding: 20px; }
 
         /* עיצוב רכיבי החיפוש */
         .search-input {
@@ -68,24 +68,22 @@
 <body>
 
 <div class="layout-container">
-    <!-- צד ימין (חיפוש) -->
     <div class="right-panel">
         <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
         <div id="statusMessage" style="color: #718096; font-size: 14px;">מטעין את מאגר החיפוש...</div>
         <div id="searchResults"></div>
     </div>
 
-    <!-- צד שמאל (תצוגה) -->
     <div class="left-panel">
         <iframe id="pdfViewer" src="about:blank" style="display:none;"></iframe>
-        <div id="placeholderText" class="placeholder-text">🔍 חפש מושג ולחץ על תוצאה כדי להציג את העלון</div>
+        <div id="placeholderText" class="placeholder-text">🔍 חפש מושג ולחץ על תוצאה כדי להציג את העלון והדגשת המילה</div>
     </div>
 </div>
 
 <script>
     let alonData = [];
 
-    // הקישור הישיר למאגר ולתיקיית ה-PDF שיצרנו
+    // נתיבים למאגר בגיטהאב
     const JSON_URL = 'https://raw.githubusercontent.com/ladat1234/alonim/main/search_index.json';
     const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
     
@@ -100,15 +98,21 @@
             document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
         });
 
-    // הפונקציה שפותחת את ה-PDF ומסמנת בצהוב
+    // הפונקציה שפותחת את ה-PDF דרך קורא ה-PDF המקצועי ומדגישה בעברית
     window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         
-        // בניית הקישור עם פקודת החיפוש המובנית של הדפדפן
-        const pdfUrl = `${PDF_BASE_URL}${alonNumber}.pdf#search="${searchTerm}"`;
+        // הקישור לקובץ ה-PDF עצמו
+        const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
         
-        viewer.src = pdfUrl;
+        // הקישור לקורא ה-PDF המקצועי שהעלנו
+        const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
+        
+        // בניית הכתובת הסופית המשולבת עם פקודת החיפוש המובנית של PDF.js
+        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}`;
+        
+        viewer.src = finalUrl;
         viewer.style.display = 'block';
         placeholder.style.display = 'none';
     };
@@ -127,7 +131,6 @@
         }
 
         const safeTerm = escapeRegExp(term);
-        // מאפשר גמישות לאותיות ו/י בתוך המילה
         const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?');
         const regex = new RegExp(flexibleTerm, 'g');
 
@@ -140,15 +143,13 @@
             
             if (match) {
                 matchCount++;
-                const alonNumber = file.filename.replace(/\D/g, ''); // חולץ רק את המספר מהשם
+                const alonNumber = file.filename.replace(/\D/g, ''); 
                 
-                // יצירת תצוגה מקדימה קצרה
                 const start = Math.max(0, match.index - 60);
                 const end = Math.min(content.length, match.index + match[0].length + 60);
                 let snippet = content.substring(start, end);
                 snippet = snippet.replace(regex, matched => `<span class="highlight">${matched}</span>`);
 
-                // כרטיסייה לחיצה שמפעילה את פתיחת ה-PDF
                 htmlOutput += `
                     <div class="result-card" onclick="openPdf('${alonNumber}', '${term}')">
                         <div class="result-title">📄 נמצא בעלון מספר ${alonNumber}</div>
