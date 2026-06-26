@@ -106,7 +106,7 @@
         const placeholder = document.getElementById('placeholderText');
         
         // בניית הקישור עם פקודת החיפוש המובנית של הדפדפן
-        const pdfUrl = `${PDF_BASE_URL}${alonNumber}.pdf#search=${encodeURIComponent(searchTerm)}`;
+        const pdfUrl = `${PDF_BASE_URL}${alonNumber}.pdf#search="${searchTerm}"`;
         
         viewer.src = pdfUrl;
         viewer.style.display = 'block';
