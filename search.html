@@ -3,258 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>חיפוש עלונים</title>
+    <title>חיפוש עלונים - מסך מפוצל</title>
     <style>
-        body { margin: 0; padding: 0; background: transparent; font-family: Arial, Helvetica, sans-serif; }
-        .search-wrapper {
-            width: 100%;
-            margin: 0 auto;
-            direction: rtl;
-            box-sizing: border-box;
+        body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; height: 100vh; overflow: hidden; background: #edf2f7; }
+        
+        /* עיצוב המסך המפוצל */
+        .layout-container { display: flex; height: 100vh; width: 100%; }
+        
+        /* צד ימין - סרגל החיפוש */
+        .right-panel { 
+            width: 35%; 
+            background: #ffffff; 
+            padding: 20px; 
+            overflow-y: auto; 
+            box-sizing: border-box; 
+            border-left: 2px solid #e2e8f0; 
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
         }
+        
+        /* צד שמאל - תצוגת ה-PDF */
+        .left-panel { 
+            width: 65%; 
+            height: 100%; 
+            background: #cbd5e0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }
+        
+        iframe { width: 100%; height: 100%; border: none; }
+        
+        .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; }
+
+        /* עיצוב רכיבי החיפוש */
         .search-input {
             width: 100%;
             padding: 15px;
-            font-size: 18px;
+            font-size: 16px;
             border: 2px solid #3182ce;
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             box-sizing: border-box;
+            margin-bottom: 15px;
         }
         .result-card {
-            background: #ffffff;
+            background: #f7fafc;
             border: 1px solid #e2e8f0;
             border-right: 5px solid #3182ce;
             padding: 15px;
-            margin-top: 15px;
+            margin-bottom: 12px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #edf2f7;
-        }
-        .result-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #2d3748;
-            margin: 0;
-        }
-        .highlight {
-            background-color: #fefcbf;
-            font-weight: bold;
-            padding: 0 4px;
-            border-radius: 3px;
-            color: #b7791f;
-        }
-        .action-buttons a {
-            display: inline-block;
-            padding: 6px 12px;
-            margin-right: 5px;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-        }
-        .btn-drive-view { background: #ebf8ff; color: #3182ce; border: 1px solid #bee3f8; }
-        .btn-drive-view:hover { background: #bee3f8; }
-        
-        .snippet-container {
-            margin-top: 10px;
-            position: relative;
-        }
-        .snippet-text {
-            margin: 0;
-            color: #4a5568;
-            font-size: 15px;
-            line-height: 1.6;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-        .snippet-text.collapsed {
-            max-height: 48px; 
-            position: relative;
-        }
-        .snippet-text.collapsed::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 100%;
-            height: 20px;
-            background: linear-gradient(to top, #ffffff, transparent);
-        }
-        .toggle-btn {
-            background: none;
-            border: none;
-            color: #3182ce;
-            font-weight: bold;
             cursor: pointer;
-            padding: 5px 0;
-            font-size: 14px;
-            margin-top: 5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
+            transition: all 0.2s;
         }
-        .toggle-btn:hover {
-            color: #2b6cb0;
+        .result-card:hover {
+            background: #ebf8ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
+        .result-title { font-size: 16px; font-weight: bold; color: #2b6cb0; margin-bottom: 5px; }
+        .result-snippet { font-size: 14px; color: #4a5568; line-height: 1.5; margin: 0; }
+        .highlight { background-color: #fefcbf; font-weight: bold; color: #b7791f; padding: 0 2px; }
     </style>
 </head>
 <body>
 
-<div class="search-wrapper">
-    <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מושג, מספר או משפט בתוך העלונים..." disabled>
-    <div id="statusMessage" style="color: #718096; margin-top: 10px; font-size: 14px;">מטעין את מאגר החיפוש...</div>
-    <div id="searchResults"></div>
+<div class="layout-container">
+    <!-- צד ימין (חיפוש) -->
+    <div class="right-panel">
+        <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
+        <div id="statusMessage" style="color: #718096; font-size: 14px;">מטעין את מאגר החיפוש...</div>
+        <div id="searchResults"></div>
+    </div>
+
+    <!-- צד שמאל (תצוגה) -->
+    <div class="left-panel">
+        <iframe id="pdfViewer" src="about:blank" style="display:none;"></iframe>
+        <div id="placeholderText" class="placeholder-text">🔍 חפש מושג ולחץ על תוצאה כדי להציג את העלון</div>
+    </div>
 </div>
 
 <script>
     let alonData = [];
 
-    const PRIMARY_URL = 'https://raw.githubusercontent.com/ladat1234/alonim/main/search_index.json';
-    const BACKUP_URL = 'https://ladat1234.github.io/alonim/search_index.json';
+    // הקישור הישיר למאגר ולתיקיית ה-PDF שיצרנו
+    const JSON_URL = 'https://raw.githubusercontent.com/ladat1234/alonim/main/search_index.json';
+    const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
     
-    function enableSearch(data) {
-        alonData = data;
-        document.getElementById('smartSearchInput').disabled = false;
-        document.getElementById('statusMessage').style.display = 'none';
-    }
-
-    function showError() {
-        document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון את מאגר החיפוש. אנא ודא שקובץ ה-JSON נמצא במאגר.';
-    }
-
-    fetch(PRIMARY_URL)
-        .then(response => {
-            if (!response.ok) throw new Error('Primary failed');
-            return response.json();
+    fetch(JSON_URL)
+        .then(response => response.json())
+        .then(data => {
+            alonData = data;
+            document.getElementById('smartSearchInput').disabled = false;
+            document.getElementById('statusMessage').style.display = 'none';
         })
-        .then(enableSearch)
         .catch(() => {
-            fetch(BACKUP_URL)
-                .then(response => {
-                    if (!response.ok) throw new Error('Backup failed');
-                    return response.json();
-                })
-                .then(enableSearch)
-                .catch(showError);
+            document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
         });
 
-    function getAlonDataInfo(alonNumber) {
-        const num = parseInt(alonNumber);
-        if (isNaN(num)) return null;
-        if (num >= 1 && num <= 26) return { year: 'תשע"ט', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A2%D7%98.htm' };
-        if (num >= 27 && num <= 69) return { year: 'תש"פ', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4.htm' };
-        if (num >= 70 && num <= 115) return { year: 'תשפ"א', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%90.htm' };
-        if (num >= 116 && num <= 168) return { year: 'תשפ"ב', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%91.htm' };
-        if (num >= 169 && num <= 217) return { year: 'תשפ"ג', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%92.htm' };
-        if (num >= 218 && num <= 269) return { year: 'תשפ"ד', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%93.htm' };
-        if (num >= 270 && num <= 318) return { year: 'תשפ"ה', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%94.htm' };
-        if (num >= 319) return { year: 'תשפ"ו', url: 'https://ydaat-books.coi.co.il/%D7%A9%D7%A0%D7%AA-%D7%AA%D7%A9%D7%A4%D7%95.htm' };
-        return null;
-    }
+    // הפונקציה שפותחת את ה-PDF ומסמנת בצהוב
+    window.openPdf = function(alonNumber, searchTerm) {
+        const viewer = document.getElementById('pdfViewer');
+        const placeholder = document.getElementById('placeholderText');
+        
+        // בניית הקישור עם פקודת החיפוש המובנית של הדפדפן
+        const pdfUrl = `${PDF_BASE_URL}${alonNumber}.pdf#search=${encodeURIComponent(searchTerm)}`;
+        
+        viewer.src = pdfUrl;
+        viewer.style.display = 'block';
+        placeholder.style.display = 'none';
+    };
 
-    // התיקון: פונקציה שמנטרלת תווי קוד מהחיפוש של הגולש
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
-    function buildSmartRegex(query) {
-        const words = query.trim().split(/\s+/);
-        const flexibleWords = words.map(word => {
-            // קודם כל נהפוך סימני שאלה, נקודות וכו' לטקסט בטוח
-            const safeWord = escapeRegExp(word);
-            // ואז נוסיף את הגמישות לאותיות ו' י'
-            return safeWord.replace(/[וי]/g, '[וי]?');
-        });
-        const gapPattern = '(?:\\s+[^\\s]+){0,5}\\s+';
-        return new RegExp(flexibleWords.join(gapPattern), 'g');
-    }
-
-    window.toggleSnippet = function(id) {
-        const p = document.getElementById('snippet-' + id);
-        const btn = document.getElementById('btn-' + id);
-        if (p.classList.contains('collapsed')) {
-            p.classList.remove('collapsed');
-            p.style.maxHeight = '1000px';
-            btn.innerHTML = 'הצג פחות 🔼';
-        } else {
-            p.classList.add('collapsed');
-            p.style.maxHeight = '48px';
-            btn.innerHTML = 'קרא עוד 🔽';
-        }
     }
 
     document.getElementById('smartSearchInput').addEventListener('input', function(e) {
         const term = e.target.value.trim();
         const resultsDiv = document.getElementById('searchResults');
         
-        if(term.length < 2) { // הורדתי ל-2 תווים כדי שאפשר יהיה לחפש גם מספרים דו-ספרתיים!
+        if(term.length < 2) { 
             resultsDiv.innerHTML = '';
             return;
         }
 
-        try {
-            const smartRegex = buildSmartRegex(term);
-            let htmlOutput = '';
-            let matchCount = 0;
+        const safeTerm = escapeRegExp(term);
+        // מאפשר גמישות לאותיות ו/י בתוך המילה
+        const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?');
+        const regex = new RegExp(flexibleTerm, 'g');
 
-            alonData.forEach(file => {
-                const content = file.content;
-                const match = smartRegex.exec(content);
+        let htmlOutput = '';
+        let matchCount = 0;
+
+        alonData.forEach(file => {
+            const content = file.content;
+            const match = regex.exec(content);
+            
+            if (match) {
+                matchCount++;
+                const alonNumber = file.filename.replace(/\D/g, ''); // חולץ רק את המספר מהשם
                 
-                if (match) {
-                    matchCount++;
-                    
-                    const numberMatch = file.filename.match(/\d+/);
-                    const alonNumber = numberMatch ? numberMatch[0] : '';
-                    
-                    let buttonsHtml = '';
-                    if (alonNumber) {
-                        const info = getAlonDataInfo(alonNumber);
-                        if (info) {
-                            buttonsHtml = `<a href="${info.url}" target="_parent" class="btn-drive-view">👁️ מעבר לעמוד שנת ${info.year} (עלון ${alonNumber})</a>`;
-                        } else {
-                            const fallbackSearch = encodeURIComponent(`עלון מספר ${alonNumber}`);
-                            const viewLink = `https://drive.google.com/drive/search?q=${fallbackSearch}`;
-                            buttonsHtml = `<a href="${viewLink}" target="_blank" class="btn-drive-view">👁️ חפש עלון ${alonNumber} בדרייב</a>`;
-                        }
-                    }
+                // יצירת תצוגה מקדימה קצרה
+                const start = Math.max(0, match.index - 60);
+                const end = Math.min(content.length, match.index + match[0].length + 60);
+                let snippet = content.substring(start, end);
+                snippet = snippet.replace(regex, matched => `<span class="highlight">${matched}</span>`);
 
-                    const start = Math.max(0, match.index - 250);
-                    const end = Math.min(content.length, match.index + match[0].length + 250);
-                    let snippet = content.substring(start, end);
-                    snippet = snippet.replace(buildSmartRegex(term), matched => `<span class="highlight">${matched}</span>`);
-
-                    htmlOutput += `
-                        <div class="result-card">
-                            <div class="result-header">
-                                <span class="result-title">📄 נמצא בעלון ${alonNumber}</span>
-                                <div class="action-buttons">${buttonsHtml}</div>
-                            </div>
-                            <div class="snippet-container">
-                                <p class="snippet-text collapsed" id="snippet-${matchCount}">...${snippet}...</p>
-                                <button class="toggle-btn" id="btn-${matchCount}" onclick="toggleSnippet(${matchCount})">קרא עוד 🔽</button>
-                            </div>
-                        </div>
-                    `;
-                }
-                smartRegex.lastIndex = 0; 
-            });
-
-            if (matchCount === 0) {
-                resultsDiv.innerHTML = '<div style="margin-top:15px; color:#718096;">לא נמצאו תוצאות לחיפוש זה.</div>';
-            } else {
-                resultsDiv.innerHTML = `<div style="margin-top:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
+                // כרטיסייה לחיצה שמפעילה את פתיחת ה-PDF
+                htmlOutput += `
+                    <div class="result-card" onclick="openPdf('${alonNumber}', '${term}')">
+                        <div class="result-title">📄 נמצא בעלון מספר ${alonNumber}</div>
+                        <p class="result-snippet">...${snippet}...</p>
+                    </div>
+                `;
             }
-        } catch (error) {
-            console.error("שגיאה בחיפוש:", error);
+            regex.lastIndex = 0; 
+        });
+
+        if (matchCount === 0) {
+            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות.</div>';
+        } else {
+            resultsDiv.innerHTML = `<div style="margin-bottom:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות (לחץ להצגה):</div>` + htmlOutput;
         }
     });
 </script>
