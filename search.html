@@ -55,19 +55,19 @@
             document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
         });
 
-    window.openPdf = function(alonNumber, searchTerm) {
+   window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
-        const exactSearchTerm = '"' + searchTerm + '"';
-        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(exactSearchTerm)}`;
+        
+        // הוספנו את הפקודה &phrase=true כדי לחייב את הנגן לחפש ביטוי שלם ומדויק
+        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=true`;
         
         viewer.src = finalUrl;
         viewer.style.display = 'block';
         placeholder.style.display = 'none';
     };
-
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
