@@ -4,62 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>חיפוש עלונים - מסך מפוצל מתקדם</title>
+    
+    <link rel="preload" href="https://ladat1234.github.io/alonim/search_index.json" as="fetch" crossorigin="anonymous">
+
     <style>
         body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; height: 100vh; overflow: hidden; background: #edf2f7; }
-        
-        /* עיצוב המסך המפוצל */
         .layout-container { display: flex; height: 100vh; width: 100%; }
-        
-        /* צד ימין - סרגל החיפוש */
-        .right-panel { 
-            width: 35%; 
-            background: #ffffff; 
-            padding: 20px; 
-            overflow-y: auto; 
-            box-sizing: border-box; 
-            border-left: 2px solid #e2e8f0; 
-            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
-        }
-        
-        /* צד שמאל - תצוגת ה-PDF */
-        .left-panel { 
-            width: 65%; 
-            height: 100%; 
-            background: #cbd5e0; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-        }
-        
+        .right-panel { width: 35%; background: #ffffff; padding: 20px; overflow-y: auto; box-sizing: border-box; border-left: 2px solid #e2e8f0; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
+        .left-panel { width: 65%; height: 100%; background: #cbd5e0; display: flex; align-items: center; justify-content: center; }
         iframe { width: 100%; height: 100%; border: none; }
-        
-        .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; font-weight: bold; text-align: center; padding: 20px; }
-
-        /* עיצוב רכיבי החיפוש */
-        .search-input {
-            width: 100%;
-            padding: 15px;
-            font-size: 16px;
-            border: 2px solid #3182ce;
-            border-radius: 8px;
-            box-sizing: border-box;
-            margin-bottom: 15px;
-        }
-        .result-card {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-right: 5px solid #3182ce;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .result-card:hover {
-            background: #ebf8ff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
+        .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; text-align: center; padding: 20px; }
+        .search-input { width: 100%; padding: 15px; font-size: 16px; border: 2px solid #3182ce; border-radius: 8px; box-sizing: border-box; margin-bottom: 15px; }
+        .result-card { background: #f7fafc; border: 1px solid #e2e8f0; border-right: 5px solid #3182ce; padding: 15px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .result-card:hover { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .result-title { font-size: 16px; font-weight: bold; color: #2b6cb0; margin-bottom: 5px; }
         .result-snippet { font-size: 14px; color: #4a5568; line-height: 1.5; margin: 0; }
         .highlight { background-color: #fefcbf; font-weight: bold; color: #b7791f; padding: 0 2px; }
@@ -70,7 +27,7 @@
 <div class="layout-container">
     <div class="right-panel">
         <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
-        <div id="statusMessage" style="color: #718096; font-size: 14px;">מטעין את מאגר החיפוש...</div>
+        <div id="statusMessage" style="color: #718096; font-size: 14px;">מטעין את מאגר החיפוש... (טעינה ראשונית)</div>
         <div id="searchResults"></div>
     </div>
 
@@ -83,8 +40,8 @@
 <script>
     let alonData = [];
 
-    // נתיבים למאגר בגיטהאב
-    const JSON_URL = 'https://raw.githubusercontent.com/ladat1234/alonim/main/search_index.json';
+    // שינוי לכתובת המהירה של השרת שמכווצת את הקובץ
+    const JSON_URL = 'https://ladat1234.github.io/alonim/search_index.json';
     const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
     
     fetch(JSON_URL)
@@ -98,26 +55,19 @@
             document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
         });
 
-   window.openPdf = function(alonNumber, searchTerm) {
+    window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
-        
-        // הקישור לקובץ ה-PDF עצמו
         const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
-        
-        // הקישור לקורא ה-PDF המקצועי שהעלנו
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
-        
-        // עטפנו את המילה המבוקשת במרכאות כדי ש-PDF.js יחפש ביטוי מדויק
         const exactSearchTerm = '"' + searchTerm + '"';
-        
-        // בניית הכתובת הסופית
         const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(exactSearchTerm)}`;
         
         viewer.src = finalUrl;
         viewer.style.display = 'block';
         placeholder.style.display = 'none';
     };
+
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
@@ -145,7 +95,6 @@
             if (match) {
                 matchCount++;
                 const alonNumber = file.filename.replace(/\D/g, ''); 
-                
                 const start = Math.max(0, match.index - 60);
                 const end = Math.min(content.length, match.index + match[0].length + 60);
                 let snippet = content.substring(start, end);
