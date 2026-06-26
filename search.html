@@ -98,8 +98,7 @@
             document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
         });
 
-    // הפונקציה שפותחת את ה-PDF דרך קורא ה-PDF המקצועי ומדגישה בעברית
-    window.openPdf = function(alonNumber, searchTerm) {
+   window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         
@@ -109,14 +108,16 @@
         // הקישור לקורא ה-PDF המקצועי שהעלנו
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
         
-        // בניית הכתובת הסופית המשולבת עם פקודת החיפוש המובנית של PDF.js
-        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}`;
+        // עטפנו את המילה המבוקשת במרכאות כדי ש-PDF.js יחפש ביטוי מדויק
+        const exactSearchTerm = '"' + searchTerm + '"';
+        
+        // בניית הכתובת הסופית
+        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(exactSearchTerm)}`;
         
         viewer.src = finalUrl;
         viewer.style.display = 'block';
         placeholder.style.display = 'none';
     };
-
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
