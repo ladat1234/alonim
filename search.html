@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>חיפוש עלונים - מסך מפוצל מתקדם</title>
     
+    <!-- פקודת Preload לטעינה מהירה -->
     <link rel="preload" href="https://ladat1234.github.io/alonim/search_index.json" as="fetch" crossorigin="anonymous">
 
     <style>
@@ -14,7 +15,13 @@
         .left-panel { width: 65%; height: 100%; background: #cbd5e0; display: flex; align-items: center; justify-content: center; }
         iframe { width: 100%; height: 100%; border: none; }
         .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; text-align: center; padding: 20px; }
-        .search-input { width: 100%; padding: 15px; font-size: 16px; border: 2px solid #3182ce; border-radius: 8px; box-sizing: border-box; margin-bottom: 15px; }
+        .search-input { width: 100%; padding: 15px; font-size: 16px; border: 2px solid #3182ce; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; }
+        
+        /* עיצוב כפתור החיפוש המדויק */
+        .toggle-container { margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .toggle-container input { width: 18px; height: 18px; cursor: pointer; }
+        .toggle-container label { font-size: 15px; color: #4a5568; cursor: pointer; user-select: none; }
+        
         .result-card { background: #f7fafc; border: 1px solid #e2e8f0; border-right: 5px solid #3182ce; padding: 15px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .result-card:hover { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .result-title { font-size: 16px; font-weight: bold; color: #2b6cb0; margin-bottom: 5px; }
@@ -27,6 +34,13 @@
 <div class="layout-container">
     <div class="right-panel">
         <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
+        
+        <!-- תיבת הסימון לחיפוש מדויק -->
+        <div class="toggle-container">
+            <input type="checkbox" id="exactSearchToggle">
+            <label for="exactSearchToggle">חיפוש מדויק (מילים מדויקות בלבד)</label>
+        </div>
+
         <div id="statusMessage" style="color: #718096; font-size: 14px;">מטעין את מאגר החיפוש... (טעינה ראשונית)</div>
         <div id="searchResults"></div>
     </div>
@@ -40,7 +54,6 @@
 <script>
     let alonData = [];
 
-    // שינוי לכתובת המהירה של השרת שמכווצת את הקובץ
     const JSON_URL = 'https://ladat1234.github.io/alonim/search_index.json';
     const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
     
@@ -55,25 +68,29 @@
             document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
         });
 
-   window.openPdf = function(alonNumber, searchTerm) {
+    window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
         
-        // הוספנו את הפקודה &phrase=true כדי לחייב את הנגן לחפש ביטוי שלם ומדויק
+        // פקודת חיפוש ביטוי שלם
         const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=true`;
         
         viewer.src = finalUrl;
         viewer.style.display = 'block';
         placeholder.style.display = 'none';
     };
+
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    document.getElementById('smartSearchInput').addEventListener('input', function(e) {
-        const term = e.target.value.trim();
+    // פונקציית החיפוש הראשית
+    function runSearch() {
+        const inputElement = document.getElementById('smartSearchInput');
+        const isExact = document.getElementById('exactSearchToggle').checked;
+        const term = inputElement.value.trim();
         const resultsDiv = document.getElementById('searchResults');
         
         if(term.length < 2) { 
@@ -82,8 +99,15 @@
         }
 
         const safeTerm = escapeRegExp(term);
-        const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?');
-        const regex = new RegExp(flexibleTerm, 'g');
+        let regex;
+        
+        // הבדיקה: האם הגולש סימן "חיפוש מדויק"?
+        if (isExact) {
+            regex = new RegExp(safeTerm, 'g'); // חיפוש מדויק לחלוטין
+        } else {
+            const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?'); // חיפוש חכם (התעלמות מו/י)
+            regex = new RegExp(flexibleTerm, 'g');
+        }
 
         let htmlOutput = '';
         let matchCount = 0;
@@ -115,7 +139,11 @@
         } else {
             resultsDiv.innerHTML = `<div style="margin-bottom:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות (לחץ להצגה):</div>` + htmlOutput;
         }
-    });
+    }
+
+    // חיבור הפונקציה גם להקלדה וגם ללחיצה על הכפתור
+    document.getElementById('smartSearchInput').addEventListener('input', runSearch);
+    document.getElementById('exactSearchToggle').addEventListener('change', runSearch);
 </script>
 </body>
 </html>
