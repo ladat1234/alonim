@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>חיפוש עלונים - מסך מפוצל מתקדם</title>
     
-    <!-- פקודת Preload לטעינה מהירה -->
     <link rel="preload" href="https://ladat1234.github.io/alonim/search_index.json" as="fetch" crossorigin="anonymous">
 
     <style>
@@ -15,33 +14,53 @@
         .left-panel { width: 65%; height: 100%; background: #cbd5e0; display: flex; align-items: center; justify-content: center; }
         iframe { width: 100%; height: 100%; border: none; }
         .placeholder-text { color: #4a5568; font-size: 20px; font-weight: bold; text-align: center; padding: 20px; }
-        .search-input { width: 100%; padding: 15px; font-size: 16px; border: 2px solid #3182ce; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; }
         
-        /* עיצוב כפתור החיפוש המדויק */
-        .toggle-container { margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        /* עיצוב מעטפת החיפוש וכפתור הניקוי */
+        .search-wrapper { position: relative; width: 100%; margin-bottom: 15px; }
+        .search-input { width: 100%; padding: 15px 15px 15px 40px; font-size: 16px; border: 2px solid #3182ce; border-radius: 8px; box-sizing: border-box; transition: all 0.2s; }
+        .search-input:focus { outline: none; border-color: #2b6cb0; box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2); }
+        .clear-btn { display: none; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; color: #a0aec0; cursor: pointer; padding: 0; outline: none; transition: color 0.2s; }
+        .clear-btn:hover { color: #4a5568; }
+
+        .toggle-container { margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
         .toggle-container input { width: 18px; height: 18px; cursor: pointer; }
         .toggle-container label { font-size: 15px; color: #4a5568; cursor: pointer; user-select: none; }
         
+        /* מדד ביצועים */
+        .search-metrics { font-size: 12px; color: #718096; margin-bottom: 15px; min-height: 18px; }
+
+        /* אנימציית טעינה (ספינר) */
+        .loader { border: 4px solid rgba(49, 130, 206, 0.2); border-left-color: #3182ce; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         .result-card { background: #f7fafc; border: 1px solid #e2e8f0; border-right: 5px solid #3182ce; padding: 15px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .result-card:hover { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        /* עיצוב התוצאה המסומנת (לניווט מקלדת) */
+        .result-card.focused { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-right: 8px solid #2b6cb0; outline: 2px solid #63b3ed; }
+
         .result-title { font-size: 16px; font-weight: bold; color: #2b6cb0; margin-bottom: 5px; }
         .result-snippet { font-size: 14px; color: #4a5568; line-height: 1.5; margin: 0; }
-        .highlight { background-color: #fefcbf; font-weight: bold; color: #b7791f; padding: 0 2px; }
+        .highlight { background-color: #fefcbf; font-weight: bold; color: #b7791f; padding: 0 2px; border-radius: 2px; }
     </style>
 </head>
 <body>
 
 <div class="layout-container">
     <div class="right-panel">
-        <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
         
-        <!-- תיבת הסימון לחיפוש מדויק -->
+        <div class="search-wrapper">
+            <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
+            <button id="clearBtn" class="clear-btn" title="נקה חיפוש">✖</button>
+        </div>
+        
         <div class="toggle-container">
             <input type="checkbox" id="exactSearchToggle">
             <label for="exactSearchToggle">חיפוש מדויק (מילים מדויקות בלבד)</label>
         </div>
 
-        <div id="statusMessage" style="color: #718096; font-size: 14px;">מטעין את מאגר החיפוש... (טעינה ראשונית)</div>
+        <div id="loaderSpinner" class="loader"></div>
+        <div id="searchMetrics" class="search-metrics"></div>
         <div id="searchResults"></div>
     </div>
 
@@ -53,28 +72,31 @@
 
 <script>
     let alonData = [];
+    let focusedResultIndex = -1; // משתנה לניווט מקלדת
 
     const JSON_URL = 'https://ladat1234.github.io/alonim/search_index.json';
     const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
     
+    // טעינת הנתונים
     fetch(JSON_URL)
         .then(response => response.json())
         .then(data => {
             alonData = data;
             document.getElementById('smartSearchInput').disabled = false;
-            document.getElementById('statusMessage').style.display = 'none';
+            document.getElementById('loaderSpinner').style.display = 'none';
         })
         .catch(() => {
-            document.getElementById('statusMessage').innerText = 'שגיאה: לא ניתן לטעון נתונים.';
+            document.getElementById('loaderSpinner').style.display = 'none';
+            document.getElementById('searchResults').innerHTML = '<div style="color:red;">שגיאה: לא ניתן לטעון נתונים.</div>';
         });
 
+    // פתיחת ה-PDF
     window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
         
-        // פקודת חיפוש ביטוי שלם
         const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=true`;
         
         viewer.src = finalUrl;
@@ -86,26 +108,35 @@
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
-    // פונקציית החיפוש הראשית
+    // פונקציית החיפוש
     function runSearch() {
+        const startTime = performance.now(); // תחילת מדידת זמן
+        
         const inputElement = document.getElementById('smartSearchInput');
+        const clearBtn = document.getElementById('clearBtn');
         const isExact = document.getElementById('exactSearchToggle').checked;
         const term = inputElement.value.trim();
         const resultsDiv = document.getElementById('searchResults');
+        const metricsDiv = document.getElementById('searchMetrics');
         
+        focusedResultIndex = -1; // איפוס הניווט בכל חיפוש חדש
+
+        // הצגת כפתור הניקוי
+        clearBtn.style.display = term.length > 0 ? 'block' : 'none';
+
         if(term.length < 2) { 
             resultsDiv.innerHTML = '';
+            metricsDiv.innerText = '';
             return;
         }
 
         const safeTerm = escapeRegExp(term);
         let regex;
         
-        // הבדיקה: האם הגולש סימן "חיפוש מדויק"?
         if (isExact) {
-            regex = new RegExp(safeTerm, 'g'); // חיפוש מדויק לחלוטין
+            regex = new RegExp(safeTerm, 'g');
         } else {
-            const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?'); // חיפוש חכם (התעלמות מו/י)
+            const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?');
             regex = new RegExp(flexibleTerm, 'g');
         }
 
@@ -134,16 +165,64 @@
             regex.lastIndex = 0; 
         });
 
+        const endTime = performance.now(); // סיום מדידת זמן
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(3); // חישוב בשניות
+
         if (matchCount === 0) {
             resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות.</div>';
+            metricsDiv.innerText = '';
         } else {
-            resultsDiv.innerHTML = `<div style="margin-bottom:15px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות (לחץ להצגה):</div>` + htmlOutput;
+            resultsDiv.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
+            metricsDiv.innerText = `החיפוש הושלם ב-${timeTaken} שניות`; // תצוגת הזמן
         }
     }
 
-    // חיבור הפונקציה גם להקלדה וגם ללחיצה על הכפתור
+    // ניקוי החיפוש בלחיצה על כפתור X
+    document.getElementById('clearBtn').addEventListener('click', function() {
+        const input = document.getElementById('smartSearchInput');
+        input.value = '';
+        runSearch();
+        input.focus();
+    });
+
+    // מאזינים לשינויים
     document.getElementById('smartSearchInput').addEventListener('input', runSearch);
     document.getElementById('exactSearchToggle').addEventListener('change', runSearch);
+
+    // ניווט מקלדת
+    document.getElementById('smartSearchInput').addEventListener('keydown', function(e) {
+        const results = document.querySelectorAll('.result-card');
+        if (results.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            focusedResultIndex++;
+            if (focusedResultIndex >= results.length) focusedResultIndex = 0;
+            updateFocus(results);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            focusedResultIndex--;
+            if (focusedResultIndex < 0) focusedResultIndex = results.length - 1;
+            updateFocus(results);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (focusedResultIndex >= 0 && focusedResultIndex < results.length) {
+                results[focusedResultIndex].click(); // פותח את התוצאה שנבחרה
+            }
+        }
+    });
+
+    // פונקציית עזר לסימון התוצאה בבחירת מקלדת
+    function updateFocus(results) {
+        results.forEach((el, index) => {
+            if (index === focusedResultIndex) {
+                el.classList.add('focused');
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                el.classList.remove('focused');
+            }
+        });
+    }
 </script>
 </body>
 </html>
