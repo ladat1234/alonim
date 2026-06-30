@@ -22,9 +22,12 @@
         .clear-btn { display: none; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; color: #a0aec0; cursor: pointer; padding: 0; outline: none; transition: color 0.2s; }
         .clear-btn:hover { color: #4a5568; }
 
-        .toggle-container { margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
-        .toggle-container input { width: 18px; height: 18px; cursor: pointer; }
-        .toggle-container label { font-size: 15px; color: #4a5568; cursor: pointer; user-select: none; }
+        /* עיצוב אפשרויות החיפוש */
+        .search-options { margin-bottom: 15px; background: #f7fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .toggle-container { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .toggle-container:last-child { margin-bottom: 0; }
+        .toggle-container input[type="radio"] { width: 16px; height: 16px; cursor: pointer; margin: 0; }
+        .toggle-container label { font-size: 14px; color: #4a5568; cursor: pointer; user-select: none; }
         
         /* מדד ביצועים */
         .search-metrics { font-size: 12px; color: #718096; margin-bottom: 15px; min-height: 18px; }
@@ -54,9 +57,19 @@
             <button id="clearBtn" class="clear-btn" title="נקה חיפוש">✖</button>
         </div>
         
-        <div class="toggle-container">
-            <input type="checkbox" id="exactSearchToggle">
-            <label for="exactSearchToggle">חיפוש מדויק (מילים מדויקות בלבד)</label>
+        <div class="search-options">
+            <div class="toggle-container">
+                <input type="radio" name="searchMode" id="modeBroad" value="broad" checked>
+                <label for="modeBroad">חיפוש רחב (מילים ברצף, כולל כתיב מלא/חסר)</label>
+            </div>
+            <div class="toggle-container">
+                <input type="radio" name="searchMode" id="modeExact" value="exact">
+                <label for="modeExact">חיפוש מדויק (מילים מדויקות בלבד ברצף)</label>
+            </div>
+            <div class="toggle-container">
+                <input type="radio" name="searchMode" id="modeAdvanced" value="advanced">
+                <label for="modeAdvanced">חיפוש מתקדם (עד 20 מילים מרחק בין מילים)</label>
+            </div>
         </div>
 
         <div id="loaderSpinner" class="loader"></div>
@@ -72,7 +85,7 @@
 
 <script>
     let alonData = [];
-    let focusedResultIndex = -1; // משתנה לניווט מקלדת
+    let focusedResultIndex = -1; 
 
     const JSON_URL = 'https://ladat1234.github.io/alonim/search_index.json';
     const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
@@ -110,16 +123,16 @@
 
     // פונקציית החיפוש
     function runSearch() {
-        const startTime = performance.now(); // תחילת מדידת זמן
+        const startTime = performance.now(); 
         
         const inputElement = document.getElementById('smartSearchInput');
         const clearBtn = document.getElementById('clearBtn');
-        const isExact = document.getElementById('exactSearchToggle').checked;
+        const searchMode = document.querySelector('input[name="searchMode"]:checked').value;
         const term = inputElement.value.trim();
         const resultsDiv = document.getElementById('searchResults');
         const metricsDiv = document.getElementById('searchMetrics');
         
-        focusedResultIndex = -1; // איפוס הניווט בכל חיפוש חדש
+        focusedResultIndex = -1; 
 
         // הצגת כפתור הניקוי
         clearBtn.style.display = term.length > 0 ? 'block' : 'none';
@@ -130,15 +143,37 @@
             return;
         }
 
-        const safeTerm = escapeRegExp(term);
-        let regex;
-        
-        if (isExact) {
-            regex = new RegExp(safeTerm, 'g');
-        } else {
-            const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?');
-            regex = new RegExp(flexibleTerm, 'g');
+        const words = term.split(/\s+/).filter(w => w.length > 0).map(escapeRegExp);
+        if (words.length === 0) return;
+
+        // בדיקת סוג החיפוש
+        const isExact = searchMode === 'exact';
+        const isAdvanced = searchMode === 'advanced';
+
+        let processedWords = words;
+        if (!isExact) {
+            // בחיפוש רחב ובחיפוש מתקדם מאפשרים גמישות לאותיות ו/י
+            processedWords = words.map(w => w.replace(/[וי]/g, '[וי]?'));
         }
+
+        let regexStr = "";
+        
+        // הגדרת הרווח בין המילים: עד 20 מילים בחיפוש מתקדם, או מילים ברצף
+        const gap = isAdvanced ? `(?:\\s+\\S+){0,20}\\s+` : `\\s+`;
+
+        if (processedWords.length === 1) {
+            regexStr = processedWords[0];
+        } else if (processedWords.length === 2 && isAdvanced) {
+            // אם חיפוש מתקדם ויש 2 מילים - חיפוש בכל סדר
+            const w1 = processedWords[0];
+            const w2 = processedWords[1];
+            regexStr = `(?:${w1}${gap}${w2}|${w2}${gap}${w1})`;
+        } else {
+            // ליותר מ-2 מילים, או בחיפוש רגיל/מדויק - לפי הסדר
+            regexStr = processedWords.join(gap);
+        }
+
+        const regex = new RegExp(regexStr, 'g');
 
         let htmlOutput = '';
         let matchCount = 0;
@@ -149,11 +184,18 @@
             
             if (match) {
                 matchCount++;
+                // תמיכה בשם קובץ כמו "1.pdf" לפי ה-JSON שצורף
                 const alonNumber = file.filename.replace(/\D/g, ''); 
+                
                 const start = Math.max(0, match.index - 60);
                 const end = Math.min(content.length, match.index + match[0].length + 60);
                 let snippet = content.substring(start, end);
-                snippet = snippet.replace(regex, matched => `<span class="highlight">${matched}</span>`);
+                
+                // הדגשת כל מילת חיפוש בנפרד
+                processedWords.forEach(wordRegexStr => {
+                    const highlightRegex = new RegExp(`(${wordRegexStr})`, 'g');
+                    snippet = snippet.replace(highlightRegex, `<span class="highlight">$1</span>`);
+                });
 
                 htmlOutput += `
                     <div class="result-card" onclick="openPdf('${alonNumber}', '${term}')">
@@ -165,15 +207,15 @@
             regex.lastIndex = 0; 
         });
 
-        const endTime = performance.now(); // סיום מדידת זמן
-        const timeTaken = ((endTime - startTime) / 1000).toFixed(3); // חישוב בשניות
+        const endTime = performance.now(); 
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(3); 
 
         if (matchCount === 0) {
-            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות.</div>';
+            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות עבור החיפוש.</div>';
             metricsDiv.innerText = '';
         } else {
             resultsDiv.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
-            metricsDiv.innerText = `החיפוש הושלם ב-${timeTaken} שניות`; // תצוגת הזמן
+            metricsDiv.innerText = `החיפוש הושלם ב-${timeTaken} שניות`; 
         }
     }
 
@@ -185,9 +227,12 @@
         input.focus();
     });
 
-    // מאזינים לשינויים
+    // מאזינים לשינויים בתיבת הטקסט ובאפשרויות החיפוש
     document.getElementById('smartSearchInput').addEventListener('input', runSearch);
-    document.getElementById('exactSearchToggle').addEventListener('change', runSearch);
+    
+    document.querySelectorAll('input[name="searchMode"]').forEach(radio => {
+        radio.addEventListener('change', runSearch);
+    });
 
     // ניווט מקלדת
     document.getElementById('smartSearchInput').addEventListener('keydown', function(e) {
@@ -207,7 +252,7 @@
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (focusedResultIndex >= 0 && focusedResultIndex < results.length) {
-                results[focusedResultIndex].click(); // פותח את התוצאה שנבחרה
+                results[focusedResultIndex].click(); 
             }
         }
     });
