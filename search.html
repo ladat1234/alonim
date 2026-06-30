@@ -28,6 +28,7 @@
         .toggle-container:last-child { margin-bottom: 0; }
         .toggle-container input[type="radio"] { width: 16px; height: 16px; cursor: pointer; margin: 0; }
         .toggle-container label { font-size: 14px; color: #4a5568; cursor: pointer; user-select: none; }
+        .smart-badge { background: #3182ce; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; }
         
         /* מדד ביצועים */
         .search-metrics { font-size: 12px; color: #718096; margin-bottom: 15px; min-height: 18px; }
@@ -38,10 +39,7 @@
 
         .result-card { background: #f7fafc; border: 1px solid #e2e8f0; border-right: 5px solid #3182ce; padding: 15px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .result-card:hover { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        
-        /* עיצוב התוצאה המסומנת (לניווט מקלדת) */
         .result-card.focused { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-right: 8px solid #2b6cb0; outline: 2px solid #63b3ed; }
-
         .result-title { font-size: 16px; font-weight: bold; color: #2b6cb0; margin-bottom: 5px; }
         .result-snippet { font-size: 14px; color: #4a5568; line-height: 1.5; margin: 0; }
         .highlight { background-color: #fefcbf; font-weight: bold; color: #b7791f; padding: 0 2px; border-radius: 2px; }
@@ -53,22 +51,26 @@
     <div class="right-panel">
         
         <div class="search-wrapper">
-            <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
+            <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, שאלה הלכתית או נושא..." disabled>
             <button id="clearBtn" class="clear-btn" title="נקה חיפוש">✖</button>
         </div>
         
         <div class="search-options">
             <div class="toggle-container">
-                <input type="radio" name="searchMode" id="modeBroad" value="broad" checked>
-                <label for="modeBroad">חיפוש רחב (מילים ברצף, כולל כתיב מלא/חסר)</label>
+                <input type="radio" name="searchMode" id="modeSmart" value="smart" checked>
+                <label for="modeSmart"><span class="smart-badge">חדש</span>חיפוש חכם (הקלד שאלה, המערכת תסנן מילות רעש ותאתר את הנושא)</label>
             </div>
             <div class="toggle-container">
-                <input type="radio" name="searchMode" id="modeExact" value="exact">
-                <label for="modeExact">חיפוש מדויק (מילים מדויקות בלבד ברצף)</label>
+                <input type="radio" name="searchMode" id="modeBroad" value="broad">
+                <label for="modeBroad">חיפוש רחב (מילים ברצף, גמישות באותיות ו/י)</label>
             </div>
             <div class="toggle-container">
                 <input type="radio" name="searchMode" id="modeAdvanced" value="advanced">
                 <label for="modeAdvanced">חיפוש מתקדם (עד 20 מילים מרחק בין מילים)</label>
+            </div>
+            <div class="toggle-container">
+                <input type="radio" name="searchMode" id="modeExact" value="exact">
+                <label for="modeExact">חיפוש מדויק (מילים מדויקות ברצף ללא שינוי)</label>
             </div>
         </div>
 
@@ -79,7 +81,7 @@
 
     <div class="left-panel">
         <iframe id="pdfViewer" src="about:blank" style="display:none;"></iframe>
-        <div id="placeholderText" class="placeholder-text">🔍 חפש מושג ולחץ על תוצאה כדי להציג את העלון והדגשת המילה</div>
+        <div id="placeholderText" class="placeholder-text">🔍 חפש מושג או שאלה ולחץ על תוצאה כדי להציג את העלון והדגשת המילים</div>
     </div>
 </div>
 
@@ -103,14 +105,16 @@
             document.getElementById('searchResults').innerHTML = '<div style="color:red;">שגיאה: לא ניתן לטעון נתונים.</div>';
         });
 
-    // פתיחת ה-PDF
-    window.openPdf = function(alonNumber, searchTerm) {
+    // פתיחת ה-PDF מעודכנת לתמיכה בחיפוש חכם
+    window.openPdf = function(alonNumber, searchTerm, isSmartSearch) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
         
-        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=true`;
+        // בחיפוש חכם אנחנו אומרים ל-PDF לא לחפש משפט שלם (phrase=false) אלא להדגיש את כל המילים השונות
+        const phraseParam = isSmartSearch ? 'false' : 'true';
+        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=${phraseParam}`;
         
         viewer.src = finalUrl;
         viewer.style.display = 'block';
@@ -133,8 +137,6 @@
         const metricsDiv = document.getElementById('searchMetrics');
         
         focusedResultIndex = -1; 
-
-        // הצגת כפתור הניקוי
         clearBtn.style.display = term.length > 0 ? 'block' : 'none';
 
         if(term.length < 2) { 
@@ -143,75 +145,119 @@
             return;
         }
 
-        const words = term.split(/\s+/).filter(w => w.length > 0).map(escapeRegExp);
-        if (words.length === 0) return;
+        // רשימת מילות עצירה לחיפוש החכם (מילים שהמערכת תתעלם מהן כדי להתמקד בעיקר)
+        const stopWords = ['מה', 'הדין', 'האם', 'מותר', 'אסור', 'איך', 'כיצד', 'למה', 'מדוע', 'של', 'על', 'עם', 'את', 'זה', 'או', 'דין', 'למי', 'בו', 'בה', 'אפשר', 'הרי', 'אם', 'רק', 'אלא'];
+        
+        let wordsArray = term.split(/\s+/).filter(w => w.length > 0);
+        const isSmart = searchMode === 'smart';
+        
+        // בחיפוש חכם, מסירים את מילות השאלה והקישור
+        if (isSmart) {
+            wordsArray = wordsArray.filter(w => !stopWords.includes(w));
+        }
 
-        // בדיקת סוג החיפוש
+        if (wordsArray.length === 0) {
+            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">אנא הקלד מילות מפתח משמעותיות יותר (לדוגמה במקום רק "מה הדין", הוסף נושא כמו "מוקצה").</div>';
+            return;
+        }
+
+        const words = wordsArray.map(escapeRegExp);
         const isExact = searchMode === 'exact';
         const isAdvanced = searchMode === 'advanced';
 
+        // הוספת גמישות ו/י אם זה לא חיפוש מדויק
         let processedWords = words;
         if (!isExact) {
-            // בחיפוש רחב ובחיפוש מתקדם מאפשרים גמישות לאותיות ו/י
             processedWords = words.map(w => w.replace(/[וי]/g, '[וי]?'));
         }
 
         let regexStr = "";
-        
-        // הגדרת הרווח בין המילים: עד 20 מילים בחיפוש מתקדם, או מילים ברצף
         const gap = isAdvanced ? `(?:\\s+\\S+){0,20}\\s+` : `\\s+`;
 
-        if (processedWords.length === 1) {
-            regexStr = processedWords[0];
-        } else if (processedWords.length === 2 && isAdvanced) {
-            // אם חיפוש מתקדם ויש 2 מילים - חיפוש בכל סדר
-            const w1 = processedWords[0];
-            const w2 = processedWords[1];
-            regexStr = `(?:${w1}${gap}${w2}|${w2}${gap}${w1})`;
-        } else {
-            // ליותר מ-2 מילים, או בחיפוש רגיל/מדויק - לפי הסדר
-            regexStr = processedWords.join(gap);
+        // אם אנחנו בחיפוש רגיל/מדויק/מתקדם בונים את הביטוי הרגולרי
+        if (!isSmart) {
+            if (processedWords.length === 1) {
+                regexStr = processedWords[0];
+            } else if (processedWords.length === 2 && isAdvanced) {
+                const w1 = processedWords[0];
+                const w2 = processedWords[1];
+                regexStr = `(?:${w1}${gap}${w2}|${w2}${gap}${w1})`;
+            } else {
+                regexStr = processedWords.join(gap);
+            }
         }
 
-        const regex = new RegExp(regexStr, 'g');
+        const regex = !isSmart ? new RegExp(regexStr, 'g') : null;
 
         let htmlOutput = '';
         let matchCount = 0;
 
         alonData.forEach(file => {
             const content = file.content;
-            const match = regex.exec(content);
-            
-            if (match) {
+            let isMatch = false;
+            let snippetStart = 0;
+
+            if (isSmart) {
+                // בדיקת "חיפוש חכם": כל מילות המפתח חייבות להופיע בעלון - לא משנה איפה!
+                let allFound = true;
+                let matchIndices = [];
+                
+                processedWords.forEach(wordRegexStr => {
+                    const r = new RegExp(wordRegexStr, 'g');
+                    const m = r.exec(content);
+                    if (m) {
+                        matchIndices.push(m.index);
+                    } else {
+                        allFound = false; // אם מילה אחת חסרה, העלון לא רלוונטי
+                    }
+                });
+
+                if (allFound && matchIndices.length > 0) {
+                    isMatch = true;
+                    // התקציר שיוצג יתחיל מהמקום הראשון שבו נמצאה מילת מפתח כלשהי
+                    snippetStart = Math.min(...matchIndices);
+                }
+            } else {
+                // חיפוש רגיל
+                const match = regex.exec(content);
+                if (match) {
+                    isMatch = true;
+                    snippetStart = match.index;
+                }
+                if (regex) regex.lastIndex = 0; 
+            }
+
+            if (isMatch) {
                 matchCount++;
-                // תמיכה בשם קובץ כמו "1.pdf" לפי ה-JSON שצורף
                 const alonNumber = file.filename.replace(/\D/g, ''); 
                 
-                const start = Math.max(0, match.index - 60);
-                const end = Math.min(content.length, match.index + match[0].length + 60);
+                const start = Math.max(0, snippetStart - 60);
+                const end = Math.min(content.length, snippetStart + 180); // תקציר מעט ארוך יותר
                 let snippet = content.substring(start, end);
                 
-                // הדגשת כל מילת חיפוש בנפרד
+                // הדגשת כל המילים
                 processedWords.forEach(wordRegexStr => {
                     const highlightRegex = new RegExp(`(${wordRegexStr})`, 'g');
                     snippet = snippet.replace(highlightRegex, `<span class="highlight">$1</span>`);
                 });
+                
+                // שליחת מילות המפתח בלבד ל-PDF כדי שידגיש אותן כראוי
+                const cleanTermForPdf = wordsArray.join(' ');
 
                 htmlOutput += `
-                    <div class="result-card" onclick="openPdf('${alonNumber}', '${term}')">
+                    <div class="result-card" onclick="openPdf('${alonNumber}', '${cleanTermForPdf}', ${isSmart})">
                         <div class="result-title">📄 נמצא בעלון מספר ${alonNumber}</div>
                         <p class="result-snippet">...${snippet}...</p>
                     </div>
                 `;
             }
-            regex.lastIndex = 0; 
         });
 
         const endTime = performance.now(); 
         const timeTaken = ((endTime - startTime) / 1000).toFixed(3); 
 
         if (matchCount === 0) {
-            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות עבור החיפוש.</div>';
+            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות עבור החיפוש. נסה לשנות או להסיר מילים.</div>';
             metricsDiv.innerText = '';
         } else {
             resultsDiv.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
@@ -219,7 +265,7 @@
         }
     }
 
-    // ניקוי החיפוש בלחיצה על כפתור X
+    // ניקוי החיפוש
     document.getElementById('clearBtn').addEventListener('click', function() {
         const input = document.getElementById('smartSearchInput');
         input.value = '';
@@ -227,7 +273,7 @@
         input.focus();
     });
 
-    // מאזינים לשינויים בתיבת הטקסט ובאפשרויות החיפוש
+    // מאזינים
     document.getElementById('smartSearchInput').addEventListener('input', runSearch);
     
     document.querySelectorAll('input[name="searchMode"]').forEach(radio => {
@@ -257,7 +303,6 @@
         }
     });
 
-    // פונקציית עזר לסימון התוצאה בבחירת מקלדת
     function updateFocus(results) {
         results.forEach((el, index) => {
             if (index === focusedResultIndex) {
