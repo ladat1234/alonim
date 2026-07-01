@@ -22,34 +22,23 @@
         .clear-btn { display: none; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; color: #a0aec0; cursor: pointer; padding: 0; outline: none; transition: color 0.2s; }
         .clear-btn:hover { color: #4a5568; }
 
-        /* עיצוב אפשרויות החיפוש */
-        .search-options { margin-bottom: 15px; background: #f7fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .toggle-container { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-        .toggle-container:last-child { margin-bottom: 0; }
-        .toggle-container input[type="radio"] { width: 16px; height: 16px; cursor: pointer; margin: 0; }
-        .toggle-container label { font-size: 14px; color: #4a5568; cursor: pointer; user-select: none; }
-        
-        /* תגיות */
-        .genius-badge { background: #e53e3e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; font-weight: bold; animation: pulse 2s infinite; }
-        .score-badge { background: #ecc94b; color: #744210; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-bottom: 5px; display: inline-block; font-weight: bold; }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+        .toggle-container { margin-bottom: 5px; display: flex; align-items: center; gap: 8px; }
+        .toggle-container input { width: 18px; height: 18px; cursor: pointer; }
+        .toggle-container label { font-size: 15px; color: #4a5568; cursor: pointer; user-select: none; }
         
         /* מדד ביצועים */
         .search-metrics { font-size: 12px; color: #718096; margin-bottom: 15px; min-height: 18px; }
 
-        /* אנימציית טעינה */
+        /* אנימציית טעינה (ספינר) */
         .loader { border: 4px solid rgba(49, 130, 206, 0.2); border-left-color: #3182ce; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .result-card { background: #f7fafc; border: 1px solid #e2e8f0; border-right: 5px solid #3182ce; padding: 15px; margin-bottom: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .result-card:hover { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .result-card.focused { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-right: 8px solid #2b6cb0; outline: 2px solid #63b3ed; }
         
+        /* עיצוב התוצאה המסומנת (לניווט מקלדת) */
+        .result-card.focused { background: #ebf8ff; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-right: 8px solid #2b6cb0; outline: 2px solid #63b3ed; }
+
         .result-title { font-size: 16px; font-weight: bold; color: #2b6cb0; margin-bottom: 5px; }
         .result-snippet { font-size: 14px; color: #4a5568; line-height: 1.5; margin: 0; }
         .highlight { background-color: #fefcbf; font-weight: bold; color: #b7791f; padding: 0 2px; border-radius: 2px; }
@@ -61,27 +50,13 @@
     <div class="right-panel">
         
         <div class="search-wrapper">
-            <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, שאלה הלכתית או נושא..." disabled>
+            <input type="text" id="smartSearchInput" class="search-input" placeholder="חפש מילה, מושג או משפט..." disabled>
             <button id="clearBtn" class="clear-btn" title="נקה חיפוש">✖</button>
         </div>
         
-        <div class="search-options">
-            <div class="toggle-container">
-                <input type="radio" name="searchMode" id="modeGenius" value="genius" checked>
-                <label for="modeGenius"><span class="genius-badge">גאון!</span>חיפוש מבוסס הקשר (מחשב מרחק בין מילים לזיהוי הלכות)</label>
-            </div>
-            <div class="toggle-container">
-                <input type="radio" name="searchMode" id="modeBroad" value="broad">
-                <label for="modeBroad">חיפוש רחב (מילים ברצף, גמישות באותיות ו/י)</label>
-            </div>
-            <div class="toggle-container">
-                <input type="radio" name="searchMode" id="modeAdvanced" value="advanced">
-                <label for="modeAdvanced">חיפוש מתקדם (עד 20 מילים מרחק בין מילים)</label>
-            </div>
-            <div class="toggle-container">
-                <input type="radio" name="searchMode" id="modeExact" value="exact">
-                <label for="modeExact">חיפוש מדויק (מילים מדויקות ברצף ללא שינוי)</label>
-            </div>
+        <div class="toggle-container">
+            <input type="checkbox" id="exactSearchToggle">
+            <label for="exactSearchToggle">חיפוש מדויק (מילים מדויקות בלבד)</label>
         </div>
 
         <div id="loaderSpinner" class="loader"></div>
@@ -91,13 +66,13 @@
 
     <div class="left-panel">
         <iframe id="pdfViewer" src="about:blank" style="display:none;"></iframe>
-        <div id="placeholderText" class="placeholder-text">🔍 חפש נושא הלכתי ולחץ על תוצאה כדי להציג את העלון ולהדגיש את המילים</div>
+        <div id="placeholderText" class="placeholder-text">🔍 חפש מושג ולחץ על תוצאה כדי להציג את העלון והדגשת המילה</div>
     </div>
 </div>
 
 <script>
     let alonData = [];
-    let focusedResultIndex = -1; 
+    let focusedResultIndex = -1; // משתנה לניווט מקלדת
 
     const JSON_URL = 'https://ladat1234.github.io/alonim/search_index.json';
     const PDF_BASE_URL = 'https://ladat1234.github.io/alonim/pdfs/';
@@ -115,15 +90,14 @@
             document.getElementById('searchResults').innerHTML = '<div style="color:red;">שגיאה: לא ניתן לטעון נתונים.</div>';
         });
 
-    window.openPdf = function(alonNumber, searchTerm, isGenius) {
+    // פתיחת ה-PDF
+    window.openPdf = function(alonNumber, searchTerm) {
         const viewer = document.getElementById('pdfViewer');
         const placeholder = document.getElementById('placeholderText');
         const fileUrl = `${PDF_BASE_URL}${alonNumber}.pdf`;
         const advancedViewerUrl = 'https://ladat1234.github.io/alonim/pdfviewer/web/viewer.html';
         
-        // בחיפוש גאון ה-PDF יחפש כל מילה בנפרד כי הן לא תמיד ברצף (phrase=false)
-        const phraseParam = isGenius ? 'false' : 'true';
-        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=${phraseParam}`;
+        const finalUrl = `${advancedViewerUrl}?file=${encodeURIComponent(fileUrl)}#search=${encodeURIComponent(searchTerm)}&phrase=true`;
         
         viewer.src = finalUrl;
         viewer.style.display = 'block';
@@ -134,17 +108,20 @@
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
+    // פונקציית החיפוש
     function runSearch() {
-        const startTime = performance.now(); 
+        const startTime = performance.now(); // תחילת מדידת זמן
         
         const inputElement = document.getElementById('smartSearchInput');
         const clearBtn = document.getElementById('clearBtn');
-        const searchMode = document.querySelector('input[name="searchMode"]:checked').value;
+        const isExact = document.getElementById('exactSearchToggle').checked;
         const term = inputElement.value.trim();
         const resultsDiv = document.getElementById('searchResults');
         const metricsDiv = document.getElementById('searchMetrics');
         
-        focusedResultIndex = -1; 
+        focusedResultIndex = -1; // איפוס הניווט בכל חיפוש חדש
+
+        // הצגת כפתור הניקוי
         clearBtn.style.display = term.length > 0 ? 'block' : 'none';
 
         if(term.length < 2) { 
@@ -153,184 +130,54 @@
             return;
         }
 
-        // מילות עצירה לסינון רעשים בחיפוש הגאון
-        const stopWords = ['מה', 'הדין', 'האם', 'מותר', 'אסור', 'איך', 'כיצד', 'למה', 'מדוע', 'של', 'על', 'עם', 'את', 'זה', 'או', 'דין', 'למי', 'בו', 'בה', 'אפשר', 'הרי', 'אם', 'רק', 'אלא', 'לנו', 'כדי', 'צריך', 'יש', 'אין'];
+        const safeTerm = escapeRegExp(term);
+        let regex;
         
-        let wordsArray = term.split(/\s+/).filter(w => w.length > 0);
-        const isGenius = searchMode === 'genius';
-        
-        if (isGenius) {
-            wordsArray = wordsArray.filter(w => !stopWords.includes(w));
+        if (isExact) {
+            regex = new RegExp(safeTerm, 'g');
+        } else {
+            const flexibleTerm = safeTerm.replace(/[וי]/g, '[וי]?');
+            regex = new RegExp(flexibleTerm, 'g');
         }
 
-        if (wordsArray.length === 0) {
-            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">אנא הקלד נושא הלכתי או מילות מפתח מרכזיות.</div>';
-            return;
-        }
-
-        const isExact = searchMode === 'exact';
-        const isAdvanced = searchMode === 'advanced';
-        let resultsList = [];
         let htmlOutput = '';
+        let matchCount = 0;
 
-        if (isGenius) {
-            // === אלגוריתם הדירוג - חיפוש גאון ===
-            alonData.forEach(file => {
-                const content = file.content;
-                let allIndices = [];
-                let wordsFound = 0;
-                let highlightRegexes = [];
-
-                wordsArray.forEach((word, wordIndex) => {
-                    const cleanWord = escapeRegExp(word);
-                    const flexWord = cleanWord.replace(/[וי]/g, '[וי]?');
-                    
-                    // ביטוי רגולרי שתומך גם בקידומות עבריות (ב,ה,ו,ל,מ,ש,כ) בתחילת מילה
-                    const r = new RegExp(`(^|[^א-ת])([משהובכל]{0,2}${flexWord})(?=[^א-ת]|$)`, 'g');
-                    highlightRegexes.push(r);
-                    
-                    let m;
-                    let foundForThisWord = false;
-                    while ((m = r.exec(content)) !== null) {
-                        foundForThisWord = true;
-                        // מיקום המילה בפועל בטקסט (בלי הרווח שלפני)
-                        let actualPos = m.index + m[1].length; 
-                        allIndices.push({ pos: actualPos, wordIdx: wordIndex });
-                    }
-                    if (foundForThisWord) wordsFound++;
-                });
-
-                // אם כל המילים שנשארו נמצאו בעלון, מתחילים לחשב ציון
-                if (wordsFound === wordsArray.length) {
-                    allIndices.sort((a, b) => a.pos - b.pos);
-                    let minWindow = Infinity;
-                    let bestSnippetPos = allIndices[0].pos;
-
-                    // מציאת החלון הצר ביותר שבו מופיעות כל מילות החיפוש יחד
-                    for (let i = 0; i < allIndices.length; i++) {
-                        let seen = new Set();
-                        let startPos = allIndices[i].pos;
-                        let endPos = startPos;
-                        
-                        for (let j = i; j < allIndices.length; j++) {
-                            seen.add(allIndices[j].wordIdx);
-                            endPos = allIndices[j].pos;
-                            
-                            if (seen.size === wordsFound) {
-                                let windowSize = endPos - startPos;
-                                if (windowSize < minWindow) {
-                                    minWindow = windowSize;
-                                    bestSnippetPos = startPos;
-                                }
-                                break;
-                            }
-                        }
-                    }
-
-                    // ציון רלוונטיות - ככל שהחלון קטן יותר (המילים קרובות), הציון מזנק משמעותית
-                    let score = Math.round(1000000 / (minWindow + 1));
-                    
-                    resultsList.push({
-                        alonNumber: file.filename.replace(/\D/g, ''),
-                        content: content,
-                        score: score,
-                        snippetStart: bestSnippetPos,
-                        regexes: highlightRegexes
-                    });
-                }
-            });
-
-            // מיון התוצאות מהציון הגבוה ביותר לנמוך ביותר
-            resultsList.sort((a, b) => b.score - a.score);
-
-            // יצירת פלט לחיפוש הגאון
-            resultsList.forEach(res => {
-                const start = Math.max(0, res.snippetStart - 60);
-                const end = Math.min(res.content.length, res.snippetStart + 200);
-                let snippet = res.content.substring(start, end);
-                
-                // הדגשת כל המילים שמצאנו
-                res.regexes.forEach(r => {
-                    snippet = snippet.replace(r, `$1<span class="highlight">$2</span>`);
-                });
-                
-                const cleanTermForPdf = wordsArray.join(' ');
-                
-                let relevanceText = res.score > 10000 ? 'התאמה מושלמת (אותו משפט)' : (res.score > 1000 ? 'התאמה טובה (אותה פסקה)' : 'נמצא פזור בעלון');
+        alonData.forEach(file => {
+            const content = file.content;
+            const match = regex.exec(content);
+            
+            if (match) {
+                matchCount++;
+                const alonNumber = file.filename.replace(/\D/g, ''); 
+                const start = Math.max(0, match.index - 60);
+                const end = Math.min(content.length, match.index + match[0].length + 60);
+                let snippet = content.substring(start, end);
+                snippet = snippet.replace(regex, matched => `<span class="highlight">${matched}</span>`);
 
                 htmlOutput += `
-                    <div class="result-card" onclick="openPdf('${res.alonNumber}', '${cleanTermForPdf}', true)">
-                        <div class="result-title">📄 נמצא בעלון מספר ${res.alonNumber}</div>
-                        <div class="score-badge">💡 ${relevanceText}</div>
+                    <div class="result-card" onclick="openPdf('${alonNumber}', '${term}')">
+                        <div class="result-title">📄 נמצא בעלון מספר ${alonNumber}</div>
                         <p class="result-snippet">...${snippet}...</p>
                     </div>
                 `;
-            });
-
-        } else {
-            // === חיפוש קלאסי (רחב / מדויק / מתקדם) ===
-            let processedWords = wordsArray.map(escapeRegExp);
-            if (!isExact) {
-                processedWords = processedWords.map(w => w.replace(/[וי]/g, '[וי]?'));
             }
+            regex.lastIndex = 0; 
+        });
 
-            let regexStr = "";
-            const gap = isAdvanced ? `(?:\\s+\\S+){0,20}\\s+` : `\\s+`;
+        const endTime = performance.now(); // סיום מדידת זמן
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(3); // חישוב בשניות
 
-            if (processedWords.length === 1) {
-                regexStr = processedWords[0];
-            } else if (processedWords.length === 2 && isAdvanced) {
-                const w1 = processedWords[0];
-                const w2 = processedWords[1];
-                regexStr = `(?:${w1}${gap}${w2}|${w2}${gap}${w1})`;
-            } else {
-                regexStr = processedWords.join(gap);
-            }
-
-            const regex = new RegExp(regexStr, 'g');
-
-            alonData.forEach(file => {
-                const content = file.content;
-                const match = regex.exec(content);
-                
-                if (match) {
-                    const alonNumber = file.filename.replace(/\D/g, ''); 
-                    const start = Math.max(0, match.index - 60);
-                    const end = Math.min(content.length, match.index + match[0].length + 60);
-                    let snippet = content.substring(start, end);
-                    
-                    processedWords.forEach(wordRegexStr => {
-                        const highlightRegex = new RegExp(`(${wordRegexStr})`, 'g');
-                        snippet = snippet.replace(highlightRegex, `<span class="highlight">$1</span>`);
-                    });
-
-                    resultsList.push({ alonNumber, snippet });
-                }
-                regex.lastIndex = 0; 
-            });
-
-            resultsList.forEach(res => {
-                htmlOutput += `
-                    <div class="result-card" onclick="openPdf('${res.alonNumber}', '${term}', false)">
-                        <div class="result-title">📄 נמצא בעלון מספר ${res.alonNumber}</div>
-                        <p class="result-snippet">...${res.snippet}...</p>
-                    </div>
-                `;
-            });
-        }
-
-        const endTime = performance.now(); 
-        const timeTaken = ((endTime - startTime) / 1000).toFixed(3); 
-
-        if (resultsList.length === 0) {
-            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות עבור החיפוש. נסה לשנות או להסיר מילים.</div>';
+        if (matchCount === 0) {
+            resultsDiv.innerHTML = '<div style="margin-top:10px; color:#718096;">לא נמצאו תוצאות.</div>';
             metricsDiv.innerText = '';
         } else {
-            resultsDiv.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:#2f855a;">נמצאו ${resultsList.length} תוצאות (מדורגות לפי רלוונטיות):</div>` + htmlOutput;
-            metricsDiv.innerText = `החיפוש הושלם ב-${timeTaken} שניות`; 
+            resultsDiv.innerHTML = `<div style="margin-bottom:10px; font-weight:bold; color:#2f855a;">נמצאו ${matchCount} תוצאות:</div>` + htmlOutput;
+            metricsDiv.innerText = `החיפוש הושלם ב-${timeTaken} שניות`; // תצוגת הזמן
         }
     }
 
+    // ניקוי החיפוש בלחיצה על כפתור X
     document.getElementById('clearBtn').addEventListener('click', function() {
         const input = document.getElementById('smartSearchInput');
         input.value = '';
@@ -338,12 +185,11 @@
         input.focus();
     });
 
+    // מאזינים לשינויים
     document.getElementById('smartSearchInput').addEventListener('input', runSearch);
-    
-    document.querySelectorAll('input[name="searchMode"]').forEach(radio => {
-        radio.addEventListener('change', runSearch);
-    });
+    document.getElementById('exactSearchToggle').addEventListener('change', runSearch);
 
+    // ניווט מקלדת
     document.getElementById('smartSearchInput').addEventListener('keydown', function(e) {
         const results = document.querySelectorAll('.result-card');
         if (results.length === 0) return;
@@ -361,11 +207,12 @@
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (focusedResultIndex >= 0 && focusedResultIndex < results.length) {
-                results[focusedResultIndex].click(); 
+                results[focusedResultIndex].click(); // פותח את התוצאה שנבחרה
             }
         }
     });
 
+    // פונקציית עזר לסימון התוצאה בבחירת מקלדת
     function updateFocus(results) {
         results.forEach((el, index) => {
             if (index === focusedResultIndex) {
